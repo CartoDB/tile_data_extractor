@@ -1,6 +1,21 @@
-# Tiles data extractor
-Python library that used postgresql logs to extract tile data
+# Tile queries data extractor
+Python library that process PostgreSQL logs and extract tile data from mapnik queries
 
+## Data extracted
+- XYZ
+- Database name
+- Database user
+- Timestamp
+- Duration of the query
+- Tables used or basemap functions called
+- Is a basemap query?
+- Is an update action query?
+
+## Proccesed line example
+
+```json
+{"tables": ["buildings_zoomed"], "database": "cartodb_user_01df4999-81aa-4135-b460-1e5b8a7f7f79_db", "timestamp": "2017-02-09 08:19:13", "xyz": {"y": 8705.0, "x": 18900.0, "z": 15.0}, "update": false, "user": "cartodb_user_01df4999-81aa-4135-b460-1e5b8a7f7f79", "duration": "0.774", "basemaps": true}
+```
 
 ## Example of usage
 
@@ -15,3 +30,11 @@ repository = FileRepository('/tmp/basemaps_processed.log')
 service = TileDataExtractionService(repository)
 service.process('/home/ubuntu/www/misc/basemaps_research/logs/postgresql_50mb.log')
 ```
+
+## FAQ
+
+- What is the use of the update column?
+
+  We need to register any update, delete or insert queries tables because this
+  queries trigger cache invalidations and we want to take them into account
+ 
