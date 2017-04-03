@@ -52,18 +52,18 @@ class LogParserTestCase(unittest.TestCase):
 
     def test_should_return_zoom_18_for_metatile_bbox(self):
         xyz = GeoUtils.get_xyz_from_bbox(109419.6059902292,
-                                          5489974.901040357,
-                                          109801.7911316548,
-                                          5490357.086181782,
-                                          metatile=True, buffer_size=0)
+                                         5489974.901040357,
+                                         109801.7911316548,
+                                         5490357.086181782,
+                                         metatile=2, buffer_size=0)
         self.assertEqual(xyz['z'], 18)
 
     def test_should_return_zoom_18_for_tile_bbox(self):
         xyz = GeoUtils.get_xyz_from_bbox(109457.824504372,
-                                          5490165.99361107,
-                                          109610.698560942,
-                                          5490318.86766764,
-                                          metatile=False, buffer_size=0)
+                                         5490165.99361107,
+                                         109610.698560942,
+                                         5490318.86766764,
+                                         buffer_size=0)
         self.assertEqual(xyz['z'], 18)
         self.assertEqual(xyz['x'], 131788)
         self.assertEqual(xyz['y'], 95158)
@@ -71,10 +71,10 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_11_for_all_zoom_levels_from_bbox(self):
         for zoom,bbox in self.TILE_11_BY_ZOOM_FIXTURE.iteritems():
             xyz = GeoUtils.get_xyz_from_bbox(bbox[0],
-                                              bbox[1],
-                                              bbox[2],
-                                              bbox[3],
-                                              metatile=False, buffer_size=0)
+                                             bbox[1],
+                                             bbox[2],
+                                             bbox[3],
+                                             buffer_size=0)
             self.assertEqual(xyz['z'], zoom, "Bad zoom level for {}".format(zoom))
             self.assertEqual(xyz['x'], 1, "Bad x value for {} zoom level".format(zoom))
             self.assertEqual(xyz['y'], 1, "Bad y value for {} zoom level".format(zoom))
@@ -85,7 +85,7 @@ class LogParserTestCase(unittest.TestCase):
                                              bbox[1],
                                              bbox[2],
                                              bbox[3],
-                                             metatile=False, buffer_size=0)
+                                             buffer_size=0)
             self.assertEqual(xyz['z'], zoom, "Bad zoom level for {}".format(zoom))
             self.assertEqual(xyz['x'], math.pow(2,zoom)-1, "Bad x value for {} zoom level".format(zoom))
             self.assertEqual(xyz['y'], math.pow(2,zoom)-1, "Bad y value for {} zoom level".format(zoom))
@@ -95,7 +95,7 @@ class LogParserTestCase(unittest.TestCase):
                                          -2504688.542848656,
                                          2504688.542848656,
                                          20037508.3,
-                                         metatile=True, buffer_size=0)
+                                         metatile=2, buffer_size=0)
         self.assertEqual(xyz['z'], 2)
         self.assertEqual(xyz['x'], 0)
         self.assertEqual(xyz['y'], 0)
@@ -103,7 +103,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_256(self):
         xyz = GeoUtils.get_xyz_from_bbox(-17063190.69815647,16593561.59637235,
                                          -16593561.59637235,17063190.69815647,
-                                         metatile=False, buffer_size=256)
+                                         buffer_size=256)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -111,7 +111,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_128(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16984919.18119245,16671833.11333637,
                                          -16671833.11333637,16984919.18119245,
-                                         metatile=False, buffer_size=128)
+                                         buffer_size=128)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -121,7 +121,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_64(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16945783.42271044,16710968.87181837,
                                          -16710968.87181837,16945783.42271044,
-                                         metatile=False, buffer_size=64)
+                                         buffer_size=64)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -129,7 +129,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_32(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16926215.54346943,16730536.75105938,
                                          -16730536.75105938,16926215.54346943,
-                                         metatile=False, buffer_size=32)
+                                         buffer_size=32)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -137,7 +137,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_16(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16916431.60384893,16740320.69067988,
                                          -16740320.69067988,16916431.60384893,
-                                         metatile=False, buffer_size=16)
+                                         buffer_size=16)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -145,7 +145,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_8(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16911539.63403868,16745212.66049013,
                                          -16745212.66049013,16911539.63403868,
-                                         metatile=False, buffer_size=8)
+                                         buffer_size=8)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
@@ -153,7 +153,7 @@ class LogParserTestCase(unittest.TestCase):
     def test_should_return_tile_20_20_and_zoom_8_with_buffer_0(self):
         xyz = GeoUtils.get_xyz_from_bbox(-16906647.66422842,16750104.63030039,
                                          -16750104.63030039,16906647.66422842,
-                                         metatile=False, buffer_size=0)
+                                         buffer_size=0)
         self.assertEqual(xyz['z'], 8)
         self.assertEqual(xyz['x'], 20)
         self.assertEqual(xyz['y'], 20)
