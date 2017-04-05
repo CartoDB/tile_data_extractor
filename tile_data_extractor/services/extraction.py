@@ -40,16 +40,24 @@ class TileDataExtractionService(object):
                 for line in f:
                     line_json = json.loads(line)
                     if self.__valid_line(line_json):
-                        data = self.__filter_query(line_json['query'])
-                        if data:
-                            # Add rest of data and store in file
-                            data['timestamp'] = line_json['timestamp']
-                            data['host'] = line_json['host']
-                            data['duration'] = line_json['duration']
-                            data['user'] = line_json['user']
-                            data['database'] = line_json['database']
-                            self.storage_buffer.append(json.dumps(data))
-                            self.__flush_storage_buffer(1000)
+                        try:
+                            data = self.__filter_query(line_json['query'])
+                            if data:
+                                # Add rest of data and store in file
+                                data['timestamp'] = line_json['timestamp']
+                                data['host'] = line_json['host']
+                                data['duration'] = line_json['duration']
+                                data['user'] = line_json['user']
+                                data['database'] = line_json['database']
+                                self.storage_buffer.append(json.dumps(data))
+                                self.__flush_storage_buffer(1000)
+                        except psqlparse.exceptions.PSqlParseError:
+                            try:
+                                print "discarded line: {0}".format(line_json)
+                            except:
+                                pass
+                        except IndexError:
+                            print "Bad line: {0}".format(line_json)
             self.__flush_storage_buffer()
         finally:
             os.remove(self.parser_output_file)
@@ -64,43 +72,40 @@ class TileDataExtractionService(object):
             self.storage_buffer = []
 
     def __filter_query(self, query):
-        try:
-            query_stmt = psqlparse.parse(query)[0]
-            if isinstance(query_stmt, dict):
+        query_stmt = psqlparse.parse(query)[0]
+        if isinstance(query_stmt, dict):
+            return None
+        bbox_pattern = re.compile(r'.*(ST_AsTWKB\(ST_Simplify\(ST_RemoveRepeatedPoints|ST_AsBinary\(ST_Simplify\(ST_SnapToGrid|_zoomed).*(ST_MakeEnvelope\((?P<bbox_env>.*?)\,\d+\)|(ST_MakeEnvelope|BOX3D)\((?P<bbox_3d>.*?)\))', re.IGNORECASE)
+        basemaps_pattern = re.compile(r'FROM\s(?P<basemaps_function>(\S+_zoomed|high_road(_labels)?|tunnels|bridges))',re.IGNORECASE)
+        bbox_data = bbox_pattern.search(query)
+        basemaps_functions = re.findall(basemaps_pattern, query)
+        if bbox_data:
+            coordinates = self.__coordinates_from_bbox_data(bbox_data.groupdict())
+            if not coordinates:
                 return None
-            bbox_pattern = re.compile(r'.*(ST_AsTWKB\(ST_Simplify\(ST_RemoveRepeatedPoints|ST_AsBinary\(ST_Simplify\(ST_SnapToGrid|_zoomed).*(ST_MakeEnvelope\((?P<bbox_env>.*?)\,\d+\)|(ST_MakeEnvelope|BOX3D)\((?P<bbox_3d>.*?)\))', re.IGNORECASE)
-            basemaps_pattern = re.compile(r'FROM\s(?P<basemaps_function>(\S+_zoomed|high_road(_labels)?|tunnels|bridges))',re.IGNORECASE)
-            bbox_data = bbox_pattern.search(query)
-            basemaps_functions = re.findall(basemaps_pattern, query)
-            if bbox_data:
-                coordinates = self.__coordinates_from_bbox_data(bbox_data.groupdict())
-                if not coordinates:
+            bbox = ','.join([str(coordinate) for coordinate in coordinates])
+            if basemaps_functions:
+                xyz = self.__xyz_from_bbox(coordinates, self.BASEMAPS_META_TILE,
+                                            self.BASEMAPS_BUFFER_SIZE)
+                if not xyz:
                     return None
-                bbox = ','.join([str(coordinate) for coordinate in coordinates])
-                if basemaps_functions:
-                    xyz = self.__xyz_from_bbox(coordinates, self.BASEMAPS_META_TILE,
-                                               self.BASEMAPS_BUFFER_SIZE)
-                    if not xyz:
-                        return None
-                    tables = [t[0] for t in basemaps_functions]
+                tables = [t[0] for t in basemaps_functions]
 
-                    return {'xyz': xyz, 'tables': tables, 'bbox': bbox,
-                            'basemaps': True, 'update': False, 'query': query}
-                else:
-                    xyz = self.__xyz_from_bbox(coordinates, self.USER_META_TILE,
-                                               self.USER_BUFFER_SIZE)
-                    if not xyz:
-                        return None
-                    return {'xyz': xyz, 'tables': list(query_stmt.tables()),
-                            'bbox': bbox, 'basemaps': False, 'update': False, 
-                            'query': query}
-            elif query_stmt.statement in ['DELETE', 'INSERT', 'UPDATE']:
-                return {'bbox': None, 'tables': list(query_stmt.tables()),
-                        'basemaps': False, 'update': True, 'query': query}
+                return {'xyz': xyz, 'tables': tables, 'bbox': bbox,
+                        'basemaps': True, 'update': False, 'query': query}
             else:
-                return None
-        except psqlparse.exceptions.PSqlParseError:
-            print "discarded query: {0}".format(query)
+                xyz = self.__xyz_from_bbox(coordinates, self.USER_META_TILE,
+                                            self.USER_BUFFER_SIZE)
+                if not xyz:
+                    return None
+                return {'xyz': xyz, 'tables': list(query_stmt.tables()),
+                        'bbox': bbox, 'basemaps': False, 'update': False,
+                        'query': query}
+        elif query_stmt.statement in ['DELETE', 'INSERT', 'UPDATE']:
+            return {'bbox': None, 'tables': list(query_stmt.tables()),
+                    'basemaps': False, 'update': True, 'query': query}
+        else:
+            return None
 
     def __coordinates_from_bbox_data(self, bbox_data):
         """
