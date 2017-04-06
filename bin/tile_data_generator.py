@@ -11,7 +11,8 @@ from tile_data_extractor.presenters import DataPresenterFactory
 
 def main():
     parser = argparse.ArgumentParser(description='Extract tile information from PostgreSQL logs.')
-    parser.add_argument('--input', dest='input_file', required=True,
+    parser.add_argument('input_files',
+                        nargs="*", metavar="files",
                         help='input file to be parsed')
     parser.add_argument('--output', dest='output_file', required=True,
                         help='output file to be parsed')
@@ -19,14 +20,17 @@ def main():
                         choices=['csv', 'json'], help='output format')
 
     args = parser.parse_args()
-    run(args.input_file, args.output_file, args.format)
+    run(args.input_files, args.output_file, args.format)
 
 
-def run(input_file, output_file, format):
+def run(input_files, output_file, format):
     repository = FileRepository(output_file)
     formater = DataPresenterFactory.build(format)
     service = TileDataExtractionService(repository, formater)
-    service.process_file(input_file)
+    if len(input_files) > 1:
+        service.process_files(input_files)
+    else:
+        service.process_file(input_files[0])
 
 if __name__ == "__main__":
     main()
