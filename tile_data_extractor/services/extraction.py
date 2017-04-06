@@ -19,12 +19,12 @@ class TileDataExtractionService(object):
     USER_BUFFER_SIZE = 64
     USER_META_TILE = 2
 
-    def __init__(self, repository):
+    def __init__(self, repository, presenter):
         self.repository = repository
-        self.storage_buffer = []
         self.parser_output_file = '/tmp/postgresql_parsed_log.log'
         self.parser_repository = FileRepository(self.parser_output_file)
         self.parser = LogParserService(self.parser_repository)
+        self.presenter = presenter
 
     def process_files(self, list_files):
         self.parser.parse_files(list_files)
@@ -37,28 +37,15 @@ class TileDataExtractionService(object):
     def __process_parsed_file(self):
         try:
             with open(self.parser_output_file, 'r+b') as f:
+                header = self.presenter.get_header()
+                if header:
+                    self.repository.store(header)
                 for line in f:
                     line_json = json.loads(line)
                     if self.__valid_line(line_json):
-                        try:
-                            data = self.__filter_query(line_json['query'])
-                            if data:
-                                # Add rest of data and store in file
-                                data['timestamp'] = line_json['timestamp']
-                                data['host'] = line_json['host']
-                                data['duration'] = line_json['duration']
-                                data['user'] = line_json['user']
-                                data['database'] = line_json['database']
-                                self.storage_buffer.append(json.dumps(data))
-                                self.__flush_storage_buffer(1000)
-                        except psqlparse.exceptions.PSqlParseError:
-                            try:
-                                print "discarded line: {0}".format(line_json)
-                            except:
-                                pass
-                        except IndexError:
-                            print "Bad line: {0}".format(line_json)
-            self.__flush_storage_buffer()
+                        formatted_data = self.__generate_data(line_json)
+                        if formatted_data:
+                            self.repository.store(formatted_data)
         finally:
             os.remove(self.parser_output_file)
 
@@ -66,10 +53,27 @@ class TileDataExtractionService(object):
         # We only want statement and execute commands discarding parser, bind...
         return 'command' in line and line['command'] in ['statement', 'execute']
 
-    def __flush_storage_buffer(self, buffer_limit=0):
-        if len(self.storage_buffer) >= buffer_limit:
-            self.repository.store(self.storage_buffer)
-            self.storage_buffer = []
+    def __generate_data(self, line_json):
+        try:
+            data = self.__filter_query(line_json['query'])
+            if data:
+                # Add rest of data and store in file
+                data['timestamp'] = line_json['timestamp']
+                data['host'] = line_json['host']
+                data['duration'] = line_json['duration']
+                data['user'] = line_json['user']
+                data['database'] = line_json['database']
+                return self.presenter.format(data)
+            return None
+        except psqlparse.exceptions.PSqlParseError:
+            try:
+                print "discarded line: {0}".format(line_json)
+            except Exception:
+                pass
+            return None
+        except IndexError:
+            print "Bad line: {0}".format(line_json)
+            return None
 
     def __filter_query(self, query):
         query_stmt = psqlparse.parse(query)[0]
@@ -86,19 +90,21 @@ class TileDataExtractionService(object):
             bbox = ','.join([str(coordinate) for coordinate in coordinates])
             if basemaps_functions:
                 xyz = self.__xyz_from_bbox(coordinates, self.BASEMAPS_META_TILE,
-                                            self.BASEMAPS_BUFFER_SIZE)
+                                           self.BASEMAPS_BUFFER_SIZE)
                 if not xyz:
                     return None
                 tables = [t[0] for t in basemaps_functions]
 
-                return {'xyz': xyz, 'tables': tables, 'bbox': bbox,
-                        'basemaps': True, 'update': False, 'query': query}
+                return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
+                        'tables': tables, 'bbox': bbox, 'basemaps': True,
+                        'update': False, 'query': query}
             else:
                 xyz = self.__xyz_from_bbox(coordinates, self.USER_META_TILE,
-                                            self.USER_BUFFER_SIZE)
+                                           self.USER_BUFFER_SIZE)
                 if not xyz:
                     return None
-                return {'xyz': xyz, 'tables': list(query_stmt.tables()),
+                return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
+                        'tables': list(query_stmt.tables()),
                         'bbox': bbox, 'basemaps': False, 'update': False,
                         'query': query}
         elif query_stmt.statement in ['DELETE', 'INSERT', 'UPDATE']:

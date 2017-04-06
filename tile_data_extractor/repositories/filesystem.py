@@ -6,5 +6,5 @@ class FileRepository(Repository):
         self.file_name = file_name
 
     def store(self, data):
-        with open(self.file_name, 'a') as f:
-            f.write('\n'.join(data) + '\n')
+        with open(self.file_name, 'ab') as f:
+            f.write(data.strip('\r\n') + '\n' )
