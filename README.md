@@ -31,10 +31,21 @@ service = TileDataExtractionService(repository)
 service.process('/home/ubuntu/www/misc/basemaps_research/logs/postgresql_50mb.log')
 ```
 
+## How to process log files and import them into your database
+
+Now you could use [the provided script](https://github.com/CartoDB/tile_data_extractor/blob/master/bin/tile_data_generator.py) to generate a CSV file to import into the database:
+```bash
+python tile_data_generator.py file1.log file2.log...fileN.log --output /output/dir --format csv
+```
+[Here](https://github.com/CartoDB/tile_data_extractor/blob/master/tools/tables.sql) you have a SQL with the table creation script. Once you have the table created you can import the generated CSV into your table using:
+
+```sql
+COPY tile_data (host, database, username, tables, executed_at, duration, bbox, x, y, z, query, is_update, is_basemaps) FROM '/path/to/file.csv' WITH CSV HEADER;
+```
+
 ## FAQ
 
 - What is the use of the update column?
 
   We need to register any update, delete or insert queries tables because this
   queries trigger cache invalidations and we want to take them into account
- 
