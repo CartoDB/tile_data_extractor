@@ -21,7 +21,7 @@ setup(
     ],
     keywords='postgresql log tile parser',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    install_requires=['postgresql_log_parser', 'psqlparse==1.0rc4'],
+    install_requires=['postgresql_log_parser', 'psqlparse'],
     extras_require={
         'dev': ['ipdb', 'ipython'],
         'test': ['nose', 'nose-timer']

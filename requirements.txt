@@ -1,0 +1,2 @@
+-e git://github.com/cartodb/postgresql_log_parser.git#egg=postgresql_log_parser
+psqlparse==1.0rc4
