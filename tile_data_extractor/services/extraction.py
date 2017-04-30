@@ -21,7 +21,7 @@ class TileDataExtractionService(object):
 
     def __init__(self, repository, presenter):
         self.repository = repository
-        self.parser_output_file = '/tmp/postgresql_parsed_log.log'
+        self.parser_output_file = 'postgresql_parsed_log.log'
         self.parser_repository = FileRepository(self.parser_output_file)
         self.parser = LogParserService(self.parser_repository)
         self.presenter = presenter
@@ -79,39 +79,50 @@ class TileDataExtractionService(object):
         query_stmt = psqlparse.parse(query)[0]
         if isinstance(query_stmt, dict):
             return None
-        bbox_pattern = re.compile(r'.*(ST_AsTWKB\(ST_Simplify\(ST_RemoveRepeatedPoints|ST_AsBinary\(ST_Simplify\(ST_SnapToGrid|_zoomed).*(ST_MakeEnvelope\((?P<bbox_env>.*?)\,\d+\)|(ST_MakeEnvelope|BOX3D)\((?P<bbox_3d>.*?)\))', re.IGNORECASE)
-        basemaps_pattern = re.compile(r'FROM\s(?P<basemaps_function>(\S+_zoomed|high_road(_labels)?|tunnels|bridges))',re.IGNORECASE)
-        bbox_data = bbox_pattern.search(query)
-        basemaps_functions = re.findall(basemaps_pattern, query)
-        if bbox_data:
-            coordinates = self.__coordinates_from_bbox_data(bbox_data.groupdict())
-            if not coordinates:
-                return None
-            bbox = ','.join([str(coordinate) for coordinate in coordinates])
-            if basemaps_functions:
-                xyz = self.__xyz_from_bbox(coordinates, self.BASEMAPS_META_TILE,
-                                           self.BASEMAPS_BUFFER_SIZE)
-                if not xyz:
-                    return None
-                tables = [t[0] for t in basemaps_functions]
-
-                return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
-                        'tables': tables, 'bbox': bbox, 'basemaps': True,
-                        'update': False, 'query': query}
-            else:
-                xyz = self.__xyz_from_bbox(coordinates, self.USER_META_TILE,
-                                           self.USER_BUFFER_SIZE)
-                if not xyz:
-                    return None
-                return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
-                        'tables': list(query_stmt.tables()),
-                        'bbox': bbox, 'basemaps': False, 'update': False,
-                        'query': query}
-        elif query_stmt.statement in ['DELETE', 'INSERT', 'UPDATE']:
-            return {'bbox': None, 'tables': list(query_stmt.tables()),
-                    'basemaps': False, 'update': True, 'query': query}
+        if query_stmt.statement in ['DELETE', 'INSERT', 'UPDATE']:
+            try:
+                return {'bbox': None, 'tables': list(query_stmt.tables()),
+                        'basemaps': False, 'update': True, 'query': query}
+            except Exception:
+                return {'bbox': None, 'tables': list(),
+                        'basemaps': False, 'update': True, 'query': query}
         else:
-            return None
+            bbox_pattern = re.compile(r'.*(ST_AsTWKB\(ST_Simplify\(ST_RemoveRepeatedPoints|ST_AsBinary\(ST_Simplify\(ST_SnapToGrid|_zoomed).*(ST_MakeEnvelope\((?P<bbox_env>.*?)\,\d+\)|(ST_MakeEnvelope|BOX3D)\((?P<bbox_3d>.*?)\))', re.IGNORECASE)
+            basemaps_pattern = re.compile(r'FROM\s(?P<basemaps_function>(\S+_zoomed|high_road(_labels)?|tunnels|bridges))',re.IGNORECASE)
+            bbox_data = bbox_pattern.search(query)
+            basemaps_functions = re.findall(basemaps_pattern, query)
+            if bbox_data:
+                coordinates = self.__coordinates_from_bbox_data(bbox_data.groupdict())
+                if not coordinates:
+                    return None
+                bbox = ','.join([str(coordinate) for coordinate in coordinates])
+                if basemaps_functions:
+                    xyz = self.__xyz_from_bbox(coordinates, self.BASEMAPS_META_TILE,
+                                               self.BASEMAPS_BUFFER_SIZE)
+                    if not xyz:
+                        return None
+                    tables = [t[0] for t in basemaps_functions]
+
+                    return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
+                            'tables': tables, 'bbox': bbox, 'basemaps': True,
+                            'update': False, 'query': query}
+                else:
+                    xyz = self.__xyz_from_bbox(coordinates, self.USER_META_TILE,
+                                               self.USER_BUFFER_SIZE)
+                    if not xyz:
+                        return None
+                    try:
+                        return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
+                                'tables': list(query_stmt.tables()),
+                                'bbox': bbox, 'basemaps': False, 'update': False,
+                                'query': query}
+                    except Exception:
+                        return {'x': xyz['x'], 'y': xyz['y'], 'z': xyz['z'],
+                                'tables': list(),
+                                'bbox': bbox, 'basemaps': False, 'update': False,
+                                'query': query}
+            else:
+                return None
 
     def __coordinates_from_bbox_data(self, bbox_data):
         """
