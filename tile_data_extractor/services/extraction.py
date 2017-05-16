@@ -41,11 +41,14 @@ class TileDataExtractionService(object):
                 if header:
                     self.repository.store(header)
                 for line in f:
-                    line_json = json.loads(line)
-                    if self.__valid_line(line_json):
-                        formatted_data = self.__generate_data(line_json)
-                        if formatted_data:
-                            self.repository.store(formatted_data)
+                    try:
+                        line_json = json.loads(line)
+                        if self.__valid_line(line_json):
+                            formatted_data = self.__generate_data(line_json)
+                            if formatted_data:
+                                self.repository.store(formatted_data)
+                    except Exception as e:
+                        print "Bad line: {0}".format(line)
         finally:
             os.remove(self.parser_output_file)
 
